@@ -8,16 +8,8 @@ from sklearn.model_selection import GridSearchCV
 from ood import ood, ood_predict, predict_probability
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
-from sklearn.metrics import (
-    roc_auc_score, 
-    precision_score, 
-    recall_score, 
-    f1_score, 
-    accuracy_score, 
-    roc_curve,
-    confusion_matrix
-)
-
+import warnings
+warnings.filterwarnings('ignore')
 
 def generate_metadata_df(a, b, c, seed):
     np.random.seed(seed)
@@ -110,17 +102,14 @@ def train_logistic_model_5(embeddings, df):
     model_5_outputs_logistic = model_5.predict_proba(embeddings)[:, 1]  
     return model_5_outputs_logistic
 
-def evaluate(y_true, y_pred):
-    auc = roc_auc_score(y_true, y_pred)
-    fpr, tpr, thresholds = roc_curve(y_true, y_pred)
-    youden_j = tpr - fpr
-    j_best_idx = np.argmax(youden_j)
-    best_threshold = thresholds[j_best_idx]
-    y_pred_best = (y_pred >= 0.5).astype(int)
-    # y_pred_best = (y_pred >= best_threshold).astype(int)
-    f1 = f1_score(y_true, y_pred_best)
-    acc = accuracy_score(y_true, y_pred_best)
-    return auc, f1, acc
+
+def get_gemma(logits, alphas, betas):
+    beta00, beta01, beta10, beta11 = betas
+    alpha00, alpha01, alpha10 = alphas
+    res0 = logits * ((beta10 + beta11) / (alpha10))
+    res1 = (1 - logits) * ((beta00 + beta01) / (alpha00 + alpha01))
+    return res0 / (res0 + res1)
+ 
 
 def calculate(embeddings, df, model_outputs):
     target = {'x': embeddings[df['domain'] == 1], 'A': df[df['domain'] == 1]['a']}
@@ -135,9 +124,12 @@ def calculate(embeddings, df, model_outputs):
     # print(df[df['domain'] == 1].groupby('cls')['a'].count() / df[df['domain'] == 1].groupby('cls')['a'].count().sum())
     # estimate eta0
     nsource = sum(source_ind)
-    ba10 = betadmvec[2] / (sum((df['domain'] == 0) & (df['cls']=='10')) / nsource)
-    ba00 = betadmvec[0] / (sum((df['domain'] == 0) & (df['cls']=='00')) / nsource)
-    ba01 = betadmvec[1] / (sum((df['domain'] == 0) & (df['cls']=='01')) / nsource)
+    alpha10 = (sum((df['domain'] == 0) & (df['cls']=='10')) / nsource)
+    alpha00 = (sum((df['domain'] == 0) & (df['cls']=='00')) / nsource)
+    alpha01 = (sum((df['domain'] == 0) & (df['cls']=='01')) / nsource)
+    ba10 = betadmvec[2] / alpha10
+    ba00 = betadmvec[0] / alpha00
+    ba01 = betadmvec[1] / alpha01
     eta0 = ba10 * model_outputs[0] / (ba10 * model_outputs[0] + ba00 * (1 - model_outputs[0]))
     # estimate eta1
     pihat = sum(df['domain'] == 0) / (sum(df['domain'] == 0) + sum(df['domain'] == 1))
@@ -149,10 +141,14 @@ def calculate(embeddings, df, model_outputs):
     eta_bench = model_outputs[3]
     # benchmark eta1
     tau1hat = model_outputs[4]
+    # new benchmark gemma
+    gemma = get_gemma(model_outputs[3], [alpha00, alpha01, alpha10], betadmvec)
     eta1_bench = (eta_bench - eta0_bench * (1 - tau1hat)) / tau1hat
     return [(eta0, eta0_bench), 
             (eta1, eta1_bench), 
-            (eta, eta_bench)]
+            (eta, eta_bench),
+            gemma]
+
 
 def run(a, b, c, seed):
     embeddings = get_embeddings('SOFA_switch_y.csv')
@@ -169,7 +165,7 @@ def run(a, b, c, seed):
 
 if __name__ == "__main__":
     mp.set_start_method('spawn')
-    seeds = np.random.choice(np.arange(10000), 50, replace=False)
+    seeds = np.random.choice(np.arange(10000), 10, replace=False)
     res = []
     ranges = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
@@ -193,5 +189,5 @@ if __name__ == "__main__":
         data[f'{a}_{b}_{c}_{seed}']['df'] = df
 
     prefix = 'SOFA_switch_y.csv'.split('.')[0]
-    with open(f'experiment_{prefix}.pkl', 'wb') as out:
+    with open(f'experiment_{prefix}.pkl.2', 'wb') as out:
         pickle.dump(data, out, protocol=4)

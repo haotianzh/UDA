@@ -1,11 +1,33 @@
 import numpy as np 
 import pandas as pd 
-from run import evaluate
 import pickle
+from sklearn.metrics import (
+    roc_auc_score, 
+    precision_score, 
+    recall_score, 
+    f1_score, 
+    accuracy_score, 
+    roc_curve,
+    confusion_matrix
+)
 
-pkl_file = './experiment.pkl'
+
+
+pkl_file = './experiment.pkl.2'
 with open(pkl_file, 'rb') as f:
     data = pickle.load(f)
+
+def evaluate(y_true, y_pred):
+    auc = roc_auc_score(y_true, y_pred)
+    fpr, tpr, thresholds = roc_curve(y_true, y_pred)
+    youden_j = tpr - fpr
+    j_best_idx = np.argmax(youden_j)
+    best_threshold = thresholds[j_best_idx]
+    y_pred_best = (y_pred >= 0.5).astype(int)
+    # y_pred_best = (y_pred >= best_threshold).astype(int)
+    f1 = f1_score(y_true, y_pred_best)
+    acc = accuracy_score(y_true, y_pred_best)
+    return auc, f1, acc
 
 df_data = []
 for k in data:
@@ -36,6 +58,12 @@ for k in data:
     eta_auc, eta_f1, eta_acc = evaluate(y_true, y_pred_eta)
     eta_bench_auc, eta_bench_f1, eta_bench_acc = evaluate(y_true, y_pred_eta_bench)
 
+    # evaluate gemma
+    ind_valid = df['domain'] == 1
+    y_true = df[ind_valid]['y']
+    y_pred_gemma = results[3][ind_valid]  
+    gemma_auc, gemma_f1, gemma_acc = evaluate(y_true, y_pred_gemma)
+
     df_data.extend([
         [a, b, c, seed, 'eta0', 'AUC', eta0_auc],
         [a, b, c, seed, 'eta0', 'F', eta0_f1],
@@ -54,11 +82,14 @@ for k in data:
         [a, b, c, seed, 'eta', 'ACC', eta_acc],
         [a, b, c, seed, 'eta_bench', 'AUC', eta_bench_auc],
         [a, b, c, seed, 'eta_bench', 'F', eta_bench_f1],
-        [a, b, c, seed, 'eta_bench', 'ACC', eta_bench_acc]
+        [a, b, c, seed, 'eta_bench', 'ACC', eta_bench_acc],
+        [a, b, c, seed, 'gemma', 'AUC', gemma_auc],
+        [a, b, c, seed, 'gemma', 'F', gemma_f1],
+        [a, b, c, seed, 'gemma', 'ACC', gemma_acc],
         ])
     
 
 columns = ['a', 'b', 'c', 'seed', 'model', 'metric', 'value']
 df = pd.DataFrame(df_data, columns=columns)
-df.to_csv('experiments.csv', index=None)
+df.to_csv('experiments.csv.2', index=None)
 print(df)
