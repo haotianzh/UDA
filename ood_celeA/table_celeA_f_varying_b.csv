@@ -1,4 +1,4 @@
-a,b,c,model,accuracy,std
+a,b,c,model,f,std
 0.3,0.1,0.5,eta,0.738,0.003
 0.3,0.1,0.5,eta0,0.788,0.008
 0.3,0.1,0.5,eta0_bench,0.708,0.013
