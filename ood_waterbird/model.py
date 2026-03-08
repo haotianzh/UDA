@@ -164,13 +164,25 @@ class PretrainedEmbedding(nn.Module):
         backbones = {'resnet18': self.get_resnet18, 
                      'resnet50': self.get_resnet50, 
                      'vgg11': self.get_vgg11, 
-                     'vgg19': self.get_vgg19}
+                     'vgg19': self.get_vgg19,
+                     'vit16': self.get_vit16}
         assert backbone in backbones, "choose valid backbone"
         self.backbone = backbone
         model = backbones[backbone]()
-        layers = list(model.children())[:-1]
-        self.model = nn.Sequential(*layers)
-        summary(self.model.to('cuda'), (3, 224, 224))
+        if 'vit' not in backbone:
+            layers = list(model.children())[:-1]
+            self.model = nn.Sequential(*layers)
+            summary(self.model.to('cuda'), (3, 224, 224))
+        else:
+            model.heads = torch.nn.Identity()
+            self.model = model
+            self.model.to('cuda')
+            # print(self.model)
+
+    def get_vit16(self):
+        model = tv.models.vit_b_16(weights=tv.models.ViT_B_16_Weights.IMAGENET1K_V1)
+        return model
+
 
     def get_resnet18(self):
         model = tv.models.resnet18(weights=tv.models.ResNet18_Weights.IMAGENET1K_V1)
@@ -194,12 +206,18 @@ class PretrainedEmbedding(nn.Module):
 
 
 if __name__ == "__main__":
-    extractor = PretrainedEmbedding(backbone='resnet18')
+    # extractor = PretrainedEmbedding(backbone='resnet18')
+    extractor = PretrainedEmbedding(backbone='vit16')
     batch_size = 32
-    img_size = (3, 224, 224) # pytorch channel first
-    imgs = torch.rand([batch_size, *img_size]).to('cuda')
-    features = extractor(imgs)
+    img_size = (3, 256, 256) # pytorch channel first
+
+    imgs = torch.rand([batch_size, *img_size]).cuda()
+    processor = tv.models.ViT_B_16_Weights.IMAGENET1K_V1.transforms()
+    imgs = processor(imgs)
+    # print(imgs.shape)
+    with torch.no_grad():
+        features = extractor(imgs)
     print(features.shape)
 
 
- 
+    

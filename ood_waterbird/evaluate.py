@@ -14,6 +14,11 @@ from sklearn.metrics import (
 
 
 pkl_file = './experiment.pkl.2'
+# pkl_file = './experiment_vit16.pkl'
+# pkl_file = './experiment_resnet50.pkl'
+
+
+
 with open(pkl_file, 'rb') as f:
     data = pickle.load(f)
 
@@ -91,5 +96,6 @@ for k in data:
 
 columns = ['a', 'b', 'c', 'seed', 'model', 'metric', 'value']
 df = pd.DataFrame(df_data, columns=columns)
-df.to_csv('experiments.csv.2', index=None)
+df.to_csv(f'{pkl_file}.evaluated.best.csv', index=None)
 print(df)
+

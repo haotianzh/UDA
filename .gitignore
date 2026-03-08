@@ -1,5 +1,14 @@
 *.pkl
+*.pkl.*
 */__pycache__
 *.pyc
 *.ipynb_checkpoints
 ood_celeA/images
+CUB_200_2011
+data_256_standard
+resnet_models
+Spurious_OOD
+tmp
+waterbird
+.vscode
+

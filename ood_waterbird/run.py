@@ -11,9 +11,8 @@ from sklearn.pipeline import make_pipeline
 import warnings
 warnings.filterwarnings('ignore')
 
-def generate_metadata_df(a, b, c, seed):
+def generate_metadata_df(metadata_name, a, b, c, seed):
     np.random.seed(seed)
-    metadata_name = 'metadata.csv'
     df = pd.read_csv(metadata_name)
     df['cls'] = df['y'].astype(str) + df['a'].astype(str)
     # check initial distribution on training and test
@@ -142,8 +141,12 @@ def calculate(embeddings, df, model_outputs):
 
 
 def run(a, b, c, seed):
-    embeddings = np.load('./embeds/embeds_resnet18.npy')
-    metadata_df = generate_metadata_df(a=a, b=b, c=c, seed=seed)
+    # metadata_name = './embeds/metadata_vit16.csv'
+    metadata_name = './embeds/metadata_resnet50.csv'
+    # embeddings = np.load('./embeds/embeds_resnet18.npy')
+    # embeddings = np.load('./embeds/embeds_vit16.npy')
+    embeddings = np.load('./embeds/embeds_resnet50.npy')
+    metadata_df = generate_metadata_df(metadata_name=metadata_name, a=a, b=b, c=c, seed=seed)
     # print(metadata_df.groupby(['R', 'y', 'a']).count())
     x, df = load_data(embeddings, metadata_df)
     models = [train_logistic_model_1, train_logistic_model_2, train_logistic_model_3, train_logistic_model_4, train_logistic_model_5]
@@ -151,13 +154,14 @@ def run(a, b, c, seed):
     for model in models:
         model_outputs.append(model(x, df))
     results = calculate(x, df, model_outputs)
+    print(results)
     return a, b, c, seed, results, df
 
 
 if __name__ == "__main__":
 
     mp.set_start_method('spawn')
-    seeds = np.random.choice(np.arange(10000), 10, replace=False)
+    seeds = np.random.choice(np.arange(10000), 5, replace=False)
     res = []
     ranges = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
@@ -182,6 +186,6 @@ if __name__ == "__main__":
         data[f'{a}_{b}_{c}_{seed}']['outputs'] = results
         data[f'{a}_{b}_{c}_{seed}']['df'] = df
 
-    with open('experiment.pkl.2', 'wb') as out:
+    with open('experiment_resnet50.pkl', 'wb') as out:
         pickle.dump(data, out, protocol=4)
     
