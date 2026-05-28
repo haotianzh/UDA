@@ -1,7 +1,6 @@
-# UDA — Unsupervised Outcome Estimation under Subpopulation / Spurious-Correlation Shift
-
+# UDA
 Code accompanying the paper **"Unsupervised Domain Adaptation for Binary Classification with an Unobservable Source Subpopulation"**
-([arXiv:2509.20587](https://arxiv.org/abs/2509.20587)).
+([arXiv:2509.20587](https://arxiv.org/abs/2509.20587)). (accepted by TMLR)
 
 This repository estimates the **target-domain conditional outcome probability**
 `η(x) = P(Y = 1 | X = x)` when a binary **spurious / sensitive attribute** `A`
